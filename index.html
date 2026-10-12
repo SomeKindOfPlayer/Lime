@@ -47,6 +47,9 @@ h1 span{display:inline-block;font-variation-settings:'wght' 800;transition:font-
 .dcp{border-radius:34px;box-shadow:0 10px 0 var(--ink)}
 #mc{width:100%;image-rendering:pixelated;background:#9fe0ff;display:block;cursor:crosshair;border:3px solid var(--ink)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;font-weight:700;flex-wrap:wrap}
+.live{margin:0 0 12px;padding:8px 14px;border:2px solid var(--ink);border-radius:14px;font-size:.9rem;font-weight:700}
+.live[hidden]{display:none}
+.live div+div{margin-top:2px;font-weight:500}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
 .chips button{background:transparent;border:2px solid var(--ink);color:var(--ink);border-radius:99px;padding:4px 12px;font:700 .85rem 'Hanken Grotesk',sans-serif;cursor:pointer}
 .chips button:hover{background:var(--ink);color:var(--bg)}
@@ -166,6 +169,7 @@ h1 span{display:inline-block;font-variation-settings:'wght' 800;transition:font-
     <div class="pnl dcp">
       <h3>Discord</h3>
       <p>The same commands, embeds, buttons and reactions as our real bot. Type <b>/</b> or tap a command.</p>
+      <div class="live" id="live" hidden></div>
       <div class="dc" id="dc">
         <div class="dh"><i>#</i><b>general</b><span>Lime Studio</span></div>
         <div class="dm" id="log" aria-live="polite"></div>
@@ -245,7 +249,7 @@ const strip=s=>String(s||'').replace(/^[@#]/,'');
 const chanName=s=>'#'+strip(s);
 const BOT={text:'L',color:'#c8f43a'};
 const AV={bot:['L','#c8f43a','#10260f'],you:['Y','#ff3d8b','#fff']};
-const state={roles:new Set(['Member']),welcome:'#welcome',tickets:{},history:[],giveaways:{},logChan:null,members:1284};
+const state={roles:new Set(['Member']),welcome:'#welcome',tickets:{},history:[],giveaways:{},logChan:null,members:1284,server:'Lime Studio'};
 const hasRole=n=>[...state.roles].some(r=>r.toLowerCase()===String(n).toLowerCase());
 
 function rel(ts){
@@ -425,7 +429,7 @@ function joinNew(){
  const n=names[Math.floor(Math.random()*names.length)];
  const cols=['#ffb347','#7ed6df','#e056fd','#badc58','#f6e58d'];
  state.members++;
- post({chan:state.welcome,embed:{title:'Welcome!',desc:'@'+n+', welcome to **Lime Studio**!\nCheck out the rules and pick your roles in the pings channel.',thumb:{text:n[0],color:cols[Math.floor(Math.random()*cols.length)]},footer:'Member #'+state.members}})
+ post({chan:state.welcome,embed:{title:'Welcome!',desc:'@'+n+', welcome to **'+state.server+'**!\nCheck out the rules and pick your roles in the pings channel.',thumb:{text:n[0],color:cols[Math.floor(Math.random()*cols.length)]},footer:'Member #'+state.members}})
 }
 
 const CMDS=[
@@ -637,6 +641,27 @@ $('#send').onclick=()=>exec(inp.value);
  b.onclick=()=>typeof act==='function'?act():exec(act);
  $('#chips').append(b)
 });
+
+const LIVE_URL='https://raw.githubusercontent.com/SomeKindOfPlayer/Lime/status/status.json';
+async function loadLive(){
+ try{
+  const r=await fetch(LIVE_URL+'?t='+Math.floor(Date.now()/300000));
+  if(!r.ok)return;
+  const s=await r.json();
+  if(typeof s.members!=='number')return;
+  state.members=s.members;
+  if(s.server)state.server=String(s.server);
+  dc.querySelector('.dh span').textContent=state.server+' · '+s.members.toLocaleString('en-US')+' members';
+  const box=$('#live');box.textContent='';
+  const open=Number(s.tickets_open)||0;
+  box.append(el('div','','Live from our server: '+s.members.toLocaleString('en-US')+' members · '+open+' open ticket'+(open===1?'':'s')));
+  (Array.isArray(s.giveaways)?s.giveaways:[]).filter(g=>g.end_ts>nowTs()).forEach(g=>{
+   box.append(el('div','','🎉 '+String(g.prize).slice(0,60)+' · ends '+rel(+g.end_ts)+' · '+(Number(g.entries)||0)+' entries'))
+  });
+  box.hidden=false
+ }catch(e){}
+}
+loadLive();
 
 setInterval(()=>{
  log.querySelectorAll('.rel').forEach(s=>{s.textContent=rel(+s.dataset.ts)});
